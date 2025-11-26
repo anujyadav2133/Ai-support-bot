@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Support — Chat</title>
+
+  <style>
+    :root{
+      --bg-1: #0f1724; /* deep navy */
+      --panel: rgba(255,255,255,0.04);
+      --glass: rgba(255,255,255,0.03);
+      --accent-a: #7c5cff;
+      --accent-b: #50e3c2;
+      --muted: #9aa4b2;
+      --user-bubble: linear-gradient(135deg,#3b82f6 0%, #6d28d9 100%);
+      --assistant-bubble: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      --glass-border: rgba(255,255,255,0.06);
+      --success: #22c55e;
+      --danger: #ef4444;
+      --max-width: 980px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    html,body{
+      height:100%;
+      background:
+        radial-gradient(800px 400px at 10% 10%, rgba(124,92,255,0.08), transparent 6%),
+        radial-gradient(600px 300px at 95% 90%, rgba(80,227,194,0.05), transparent 6%),
+        var(--bg-1);
+      margin:0;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      color: #e6eef6;
+    }
+
+    .wrap{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+    }
+
+    .app {
+      width:100%;
+      max-width:var(--max-width);
+      height:86vh;
+      display:grid;
+      grid-template-columns: 340px 1fr;
+      gap:20px;
+      align-items:stretch;
+    }
+
+    /* LEFT SIDEBAR */
+    .sidebar {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border:1px solid var(--glass-border);
+      border-radius:14px;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      box-shadow: 0 6px 30px rgba(2,6,23,0.6);
+      overflow:auto;
+      min-height: 0;
+    }
+
+    .brand {
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .logo {
+      width:48px;height:48px;border-radius:12px;
+      background: linear-gradient(135deg,var(--accent-a), var(--accent-b));
+      display:flex;align-items:center;justify-content:center;
+      box-shadow: 0 6px 18px rgba(79,70,229,0.18), inset 0 -6px 18px rgba(255,255,255,0.06);
+      font-weight:700;
+      font-size:18px;
+      color: white;
+      letter-spacing:0.4px;
+    }
+
+    .brand h2{font-size:16px;margin:0;}
+    .brand p{font-size:12px;color:var(--muted);margin:0;}
+
+    .controls {
+      margin-top:8px;
+      display:flex;gap:8px;flex-wrap:wrap;
+    }
+
+    .btn {
+      border:1px solid rgba(255,255,255,0.06);
+      background:transparent;
+      color:var(--muted);
+      padding:8px 10px;border-radius:10px;
+      font-size:13px;cursor:pointer;
+      transition:all .18s ease;
+    }
+    .btn.primary{
+      background: linear-gradient(90deg,var(--accent-a), var(--accent-b));
+      color:white;border:none;box-shadow:0 6px 18px rgba(79,70,229,0.12);
+    }
+    .btn:hover{transform:translateY(-3px);}
+
+    .sidebar .section-title {
+      margin-top:10px;color:var(--muted);font-size:12px;
+    }
+
+    .session-list {
+      margin-top:6px;display:flex;flex-direction:column;gap:8px;overflow:auto;
+      padding-bottom:8px;
+    }
+
+    .session-item {
+      display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;cursor:pointer;
+      transition:all .12s; border:1px solid transparent;
+    }
+    .session-item:hover{background:rgba(255,255,255,0.02);}
+    .session-item.active{background:linear-gradient(90deg,rgba(124,92,255,0.12), rgba(80,227,194,0.06));border-color:rgba(255,255,255,0.04);}
+
+    .session-avatar{
+      width:36px;height:36px;border-radius:10px;background:linear-gradient(180deg,#111827, #0b1220);
+      display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;
+    }
+    .session-meta{font-size:13px;}
+    .session-meta small{display:block;color:var(--muted);font-size:12px;margin-top:2px;}
+
+    /* MAIN CHAT PANEL */
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.015));
+      border:1px solid var(--glass-border);
+      border-radius:14px;
+      display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px rgba(2,6,23,0.6);
+      min-height: 0;
+    }
+
+    .panel-header {
+      padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.02);
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+    }
+    .panel-header .title {
+      display:flex;flex-direction:column;
+    }
+    .panel-header h3{margin:0;font-size:16px;}
+    .panel-header span{font-size:13px;color:var(--muted);}
+
+    .panel-actions{display:flex;gap:8px;align-items:center;}
+    .chip {
+      background:rgba(255,255,255,0.02);padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.03);font-size:13px;color:var(--muted);
+    }
+
+    .messages {
+      padding:18px;
+      display:flex;flex-direction:column;gap:12px;
+      overflow:auto;flex:1; scroll-behavior:smooth;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.005), transparent 30%);
+    }
+
+    /* message row */
+    .msg-row{display:flex;gap:12px;align-items:flex-end;max-width:85%;}
+    .msg-row.assistant{align-self:flex-start;}
+    .msg-row.user{align-self:flex-end;flex-direction:row-reverse;}
+
+    .avatar {
+      width:44px;height:44px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;
+      color:white;background:linear-gradient(90deg,#1f2937,#111827);
+    }
+
+    .bubble {
+      padding:12px 14px;border-radius:14px;line-height:1.35;font-size:14px;
+      box-shadow: 0 6px 20px rgba(2,6,23,0.6);
+      max-width:720px;
+      white-space:pre-wrap;
+    }
+
+    .bubble.assistant{
+      background:var(--assistant-bubble);
+      color:#e6eef6;
+      border:1px solid rgba(255,255,255,0.02);
+      border-top-left-radius:4px;
+    }
+
+    .bubble.user{
+      background:var(--user-bubble);
+      color:white;
+      border: none;
+      border-top-right-radius:4px;
+      box-shadow: 0 8px 30px rgba(79,70,229,0.14);
+    }
+
+    .meta {
+      font-size:11px;color:var(--muted);margin-top:6px;
+    }
+
+    .escalation{
+      display:inline-block;margin-left:8px;background:var(--danger);color:white;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:600;
+    }
+
+    /* input area */
+    .composer {
+      padding:14px 18px;border-top:1px solid rgba(255,255,255,0.02);display:flex;gap:12px;align-items:center;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+    }
+
+    .input {
+      flex:1;display:flex;gap:12px;align-items:center;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.02);
+    }
+
+    .input textarea{
+      width:100%;resize:none;border:none;background:transparent;color:inherit;font-size:14px;outline:none;height:44px;
+    }
+
+    .send-btn{
+      background:linear-gradient(90deg,var(--accent-a), var(--accent-b));border:none;color:white;padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer;
+      box-shadow: 0 8px 22px rgba(79,70,229,0.12);
+      transition:transform .12s ease;
+    }
+    .send-btn:active{transform:translateY(1px);}
+
+    .mini {
+      background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px;border-radius:10px;color:var(--muted);cursor:pointer;
+    }
+
+    /* empty state */
+    .empty {
+      text-align:center;color:var(--muted);padding:48px 8px;
+    }
+
+    /* responsiveness */
+    @media (max-width:900px){
+      .app{grid-template-columns:1fr; height:95vh;}
+      .sidebar{order:2;max-height:28vh}
+      .panel{order:1}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="app">
+      <!-- LEFT: sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <div class="logo">AI</div>
+          <div>
+            <h2>AI Support</h2>
+            <p>Smart help for your users</p>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn primary" id="btnNew">+ New Session</button>
+          <button class="btn" id="btnFAQs">FAQs</button>
+          <button class="btn" id="btnSummary">Summary</button>
+        </div>
+
+        <div class="section-title">Sessions</div>
+        <div class="session-list" id="sessionList">
+          <!-- sessions inserted here -->
+        </div>
+
+        <div style="flex:1"></div>
+
+        <div style="font-size:12px;color:var(--muted);text-align:center;padding-top:8px">
+          Running on <strong>localhost:4000</strong>
+        </div>
+      </aside>
+
+      <!-- RIGHT: chat panel -->
+      <main class="panel">
+        <div class="panel-header">
+          <div class="title">
+            <h3 id="panelTitle">Welcome — AI Support Assistant</h3>
+            <span id="panelSubtitle">Click "New Session" to start</span>
+          </div>
+          <div class="panel-actions">
+            <div class="chip" id="sessionInfo">No session</div>
+            <button class="mini" id="btnClear">Clear</button>
+          </div>
+        </div>
+
+        <div class="messages" id="messages">
+          <div class="empty" id="emptyState">
+            Start a new session or select one from the left
+          </div>
+        </div>
+
+        <div class="composer">
+          <div class="input">
+            <textarea id="messageInput" placeholder="Type your message and press Enter — or click Send"></textarea>
+            <button class="mini" id="btnExtras" title="Extras">⋯</button>
+          </div>
+          <button class="send-btn" id="sendButton">Send ▶</button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // Simple modern chat frontend — connects to your backend
+    const API_BASE = 'http://localhost:4000/api';
+    let sessionId = null;
+    let sessions = []; // local session list
+
+    // helpers
+    const el = (id) => document.getElementById(id);
+    const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
+    const nl2br = (s) => escapeHtml(s).replace(/\n/g, '<br>');
+
+    // UI helpers
+    function setPanelTitle(title, subtitle) {
+      el('panelTitle').textContent = title || 'AI Support Assistant';
+      el('panelSubtitle').textContent = subtitle || '';
+    }
+    function setSessionBadge(text) {
+      el('sessionInfo').textContent = text || 'No session';
+    }
+
+    function renderSessions() {
+      const list = el('sessionList');
+      list.innerHTML = '';
+      sessions.forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'session-item' + (s.id === sessionId ? ' active' : '');
+        item.innerHTML = `
+          <div class="session-avatar">${(s.id||'').slice(0,2).toUpperCase()}</div>
+          <div class="session-meta">
+            <div>${escapeHtml(s.id.slice(0,8))}...</div>
+            <small>${new Date(s.updated_at || s.created_at || Date.now()).toLocaleString()}</small>
+          </div>
+        `;
+        item.onclick = () => loadSession(s.id);
+        list.appendChild(item);
+      });
+      if(sessions.length===0){
+        list.innerHTML = '<div style="color:var(--muted);font-size:13px">No sessions yet</div>';
+      }
+    }
+
+    function appendMessage(role, content, ts=null, escalated=false, noScroll=false){
+      const container = el('messages');
+      const empty = el('emptyState');
+      if(empty) empty.style.display='none';
+
+      const row = document.createElement('div');
+      row.className = 'msg-row ' + (role==='user' ? 'user' : 'assistant');
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.style.background = role==='user' ? 'linear-gradient(90deg,#06b6d4,#3b82f6)' : 'linear-gradient(90deg,#111827,#0b1220)';
+      avatar.textContent = role==='user' ? 'You' : 'AI';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble ' + (role==='user' ? 'user' : 'assistant');
+      bubble.innerHTML = `<div>${nl2br(content)}</div>` + `<div class="meta">${ts ? new Date(ts).toLocaleTimeString() : new Date().toLocaleTimeString()}</div>`;
+
+      if(escalated){
+        const esc = document.createElement('span');
+        esc.className = 'escalation';
+        esc.textContent = 'ESCALATED';
+        bubble.querySelector('.meta').appendChild(esc);
+      }
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      container.appendChild(row);
+
+      if(!noScroll) container.scrollTop = container.scrollHeight + 200;
+    }
+
+    function clearMessages(){
+      el('messages').innerHTML = '<div class="empty" id="emptyState">Start a new session or select one from the left</div>';
+    }
+
+    // API calls
+    async function api(path, opts={}) {
+      const url = API_BASE + path;
+      const res = await fetch(url, opts);
+      if(!res.ok){
+        const txt = await res.text().catch(()=>null);
+        throw new Error((txt && txt.length<200 ? txt : `HTTP ${res.status}`));
+      }
+      return res.json().catch(()=>null);
+    }
+
+    // session functions
+    async function createSession() {
+      const data = await api('/sessions/create', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ metadata:{source:'web-ui'} })
+      });
+      return data.sessionId;
+    }
+
+    async function listSessions() {
+      try{
+        const list = await api('/sessions');
+        // server returns sessions array
+        sessions = Array.isArray(list) ? list : [];
+        renderSessions();
+      }catch(e){
+        console.warn('Could not list sessions', e);
+      }
+    }
+
+    async function loadSession(id){
+      try{
+        sessionId = id;
+        setSessionBadge('Session: ' + id.slice(0,8)+'...');
+        setPanelTitle('Session Active','You can chat below');
+        clearMessages();
+        // fetch history
+        const msgs = await api('/messages/' + encodeURIComponent(id));
+        if(Array.isArray(msgs) && msgs.length){
+          msgs.forEach(m => appendMessage(m.role === 'user' ? 'user' : 'assistant', m.content, m.created_at, false, true));
+        } else {
+          appendMessage('assistant','Hello — I am your AI support assistant. How can I help you today?', Date.now(), false);
+        }
+        await listSessions();
+      }catch(err){
+        alert('Failed to load session: ' + err.message);
+      }
+    }
+
+    // Initialize new session and load it
+    async function newSession(){
+      try{
+        const id = await createSession();
+        await listSessions();
+        await loadSession(id);
+      }catch(e){
+        alert('Failed to create session: ' + e.message);
+      }
+    }
+
+    // send message
+    async function sendMessage(){
+      const txt = el('messageInput').value.trim();
+      if(!txt || !sessionId) return;
+      // optimistic UI
+      appendMessage('user', txt, Date.now());
+      el('messageInput').value = '';
+      try{
+        const resp = await api('/messages/send', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sessionId, message: txt })
+        });
+        if(resp && resp.reply){
+          appendMessage('assistant', resp.reply, Date.now(), resp.escalated || false);
+        } else {
+          appendMessage('assistant', 'Error: no reply from server', Date.now());
+        }
+        await listSessions();
+      }catch(err){
+        appendMessage('assistant', 'Failed to send message: ' + err.message, Date.now());
+      }
+    }
+
+    async function getSummary(){
+      if(!sessionId){ alert('Start a session first'); return; }
+      try{
+        const data = await api('/sessions/' + encodeURIComponent(sessionId) + '/ai-summary', { method:'POST' });
+        appendMessage('assistant', `📊 Summary:\n\n${data.summary || 'No summary'}`, Date.now());
+      }catch(err){
+        appendMessage('assistant', 'Failed to get summary: ' + err.message, Date.now());
+      }
+    }
+
+    async function getNextActions(){
+      if(!sessionId){ alert('Start a session first'); return; }
+      try{
+        const data = await api('/sessions/' + encodeURIComponent(sessionId) + '/next-actions', { method:'POST' });
+        appendMessage('assistant', `💡 Next Actions:\n\n${data.suggestedActions || 'No suggestions'}`, Date.now());
+      }catch(err){
+        appendMessage('assistant', 'Failed to get actions: ' + err.message, Date.now());
+      }
+    }
+
+    async function viewFAQs(){
+      try{
+        const faqs = await api('/faqs');
+        const text = faqs.map((f,i) => `${i+1}. ${f.question}`).join('\n');
+        appendMessage('assistant', `❓ FAQs:\n\n${text}`, Date.now());
+      }catch(e){
+        appendMessage('assistant', 'Failed to load FAQs: ' + e.message, Date.now());
+      }
+    }
+
+    // wire buttons & enter
+    document.addEventListener('DOMContentLoaded', async () => {
+      el('btnNew').addEventListener('click', newSession);
+      el('btnFAQs').addEventListener('click', viewFAQs);
+      el('btnSummary').addEventListener('click', getSummary);
+      el('btnClear').addEventListener('click', () => { clearMessages(); });
+      el('sendButton').addEventListener('click', sendMessage);
+      el('messageInput').addEventListener('keydown', (e) => {
+        if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+      });
+
+      // initial load: list existing sessions if any
+      await listSessions();
+      // if there is at least one session, auto-load the most recent
+      if(sessions.length){
+        await loadSession(sessions[0].id);
+      } else {
+        // no session, create one automatically
+        await newSession();
+      }
+    });
+  </script>
+</body>
+</html>
